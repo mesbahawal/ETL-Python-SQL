@@ -4,4 +4,4 @@ ETL using Python, SQL and Apache Airflow:
 # Install PostgreSQL and DBeaver
 - Install sqlalchemy and psycopg2 for DB engine creation
 # Install Apache Airflow using Docker
-- Follow how-to-install-airflow.txt
+- Follow how-to-install-airflow.txt [here](airflow/how-to-install-airflow.txt)
