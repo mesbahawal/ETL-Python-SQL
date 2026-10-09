@@ -1,0 +1,76 @@
+1. Download the compose file
+cd C:\airflow
+curl.exe -LfO "https://airflow.apache.org/docs/apache-airflow/3.0.6/docker-compose.yaml"
+
+2. create a .env file and in .env enter:
+AIRFLOW_UID=50000
+AIRFLOW_IMAGE_NAME=apache/airflow:3.0.6-python3.9
+
+2.* Create a data folder next to your compose file
+mkdir C:\airflow\data
+
+- Add the mount to docker-compose.yaml
+
+Under x-airflow-common → volumes, add one line. Adding it there applies it to all Airflow services:
+volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+
+- For installing additional libraries add in .env like:
+_PIP_ADDITIONAL_REQUIREMENTS=openpyxl
+
+3. Initialize the database and admin user (check optional for customized postgresql local db use)
+
+powershell
+docker compose up airflow-init
+
+Wait until it finishes with exit code 0.
+
+4. Start Airflow
+
+powershell
+docker compose up -d
+docker compose ps
+
+Wait until the containers show healthy.
+
+5. Open the UI
+
+Go to http://localhost:8080 and log in with airflow / airflow. In Airflow 3.x the default credentials may differ with your config, so check the airflow-init logs if the login fails.
+
+-----------------------------------------------------------------
+Optional (on step 3.): use your local PostgreSQL instead of the bundled one
+
+Create a database and user on your local PostgreSQL:
+sql
+   CREATE DATABASE airflow;
+   CREATE USER airflow WITH PASSWORD 'airflow';
+   GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow;
+   ALTER DATABASE airflow OWNER TO airflow;
+In docker-compose.yaml, change the DB connection to postgresql+psycopg2://airflow:airflow@host.docker.internal:5432/airflow. If AIRFLOW__CELERY__RESULT_BACKEND is set, change it to db+postgresql://airflow:airflow@host.docker.internal:5432/airflow.
+Remove the postgres service and its depends_on entries.
+Make sure PostgreSQL accepts connections from Docker: set listen_addresses = '*' in postgresql.conf and add a matching pg_hba.conf rule for the Docker subnet.
+Re-run steps 3 and 4.
+------------------------------------------------------------------
+6. Add a test DAG
+
+Create C:\airflow\dags\hello.py:
+
+---
+from datetime import datetime
+from airflow.sdk import DAG
+from airflow.providers.standard.operators.bash import BashOperator
+
+with DAG("hello_world", start_date=datetime(2026, 1, 1), schedule=None, catchup=False):
+    BashOperator(task_id="hello", bash_command="echo Hello from Airflow")
+---
+
+It appears in the UI within about a minute. Unpause it and trigger it.
+
+-------------------------------------------------------------------------
+
+Useful commands
+
+powershell
+docker compose logs -f airflow-scheduler   # logs
+docker compose down                        # stop
+docker compose down --volumes              # stop and wipe the metadata DB
